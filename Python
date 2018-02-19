@@ -1,0 +1,26 @@
+import asyncio
+
+async def Greetings(Msg1, Fname, Lname, Msg2, time):
+    if Fname:
+        if Lname:
+            await asyncio.sleep(time)
+            print(Msg1, Fname, Lname, Msg2)
+    else:
+        print("Please enter your name: ")
+        
+async def end(loop, Tend):
+    await asyncio.sleep(Tend)
+    loop.stop()
+    
+loop = asyncio.get_event_loop()
+
+Fname = input("Enter Your First name: ")
+Lname = input("Enter Your Lname name: ")
+
+loop.create_task(Greetings("Hello!", Fname, Lname, " Welcome!", .01))
+loop.create_task(end(loop, .1))
+
+                 
+loop.run_forever()
+loop.close()
+
