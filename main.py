@@ -1,46 +1,37 @@
-"""A simple aiohttp login server with default username and password!
-Pure python!
-"""
-import base64
-from cryptography import fernet
 from aiohttp import web
-import aiohttp_jinja2
-import jinja2
-from aiohttp_session.cookie_storage import EncryptedCookieStorage
-from aiohttp_session import session_middleware
 
 
-# The home page
-async def homepage(request):
-    resp = aiohttp_jinja2.render_template('index.html', request, context={})
-    return resp
+async def index(request):
+    response = web.HTTPFound(location='/')
+    cookie = response.cookies.get('key')
+    print(cookie)
+    print(type(cookie))
+    if 'default' in cookie:
+        page = open('C:/users/balakris/aiohttp-login-session/site.html', 'r').read()
+        return web.Response(text=page, content_type='text/html')
+    else:
+        return web.HTTPFound(location='/loginpage')
 
 
-# Login required
+async def login_page(request):
+    resp = open('C:/users/balakris/aiohttp-login-session/login.html', 'r').read()
+    return web.Response(text=resp, content_type='text/html')
+
+
 async def login(request):
-
-    resp = web.HTTPFound(location='/')
-    resp.set_cookie('session_cookie', 'secret', max_age=50)  # Set a cookie on the client side. 
+    resp = web.HTTPFound(location='/loginpage')
     form = await request.post()
     username = form.get('username')
     if username == 'hippod':
         password = form.get('password')
         if password == 'admin':
-            response = aiohttp_jinja2.render_template('site.html', request, context={})
+            response = web.HTTPFound(location='/')
+            response.set_cookie('default', value=1, max_age=200000, path='/')
             return response
-    return resp                                  # Redirect to the login page. 
+    return resp
 
-# Web app 
-fernet_key = fernet.Fernet.generate_key()
-secret_key = base64.urlsafe_b64decode(fernet_key)
-
-# Using jinja2 framework 
-app = web.Application(middlewares=[session_middleware(EncryptedCookieStorage(secret_key, cookie_name='session_cookie'))])
-aiohttp_jinja2.setup(app, loader=jinja2.FileSystemLoader('/aiohttp Login'))          # Templates loader
-
-# Router
-app.router.add_get('/', homepage)
+app = web.Application()
+app.router.add_get('/', index)
+app.router.add_get('/loginpage', login_page)
 app.router.add_post('/login', login)
-
-
 web.run_app(app, host='127.0.0.1', port=8080)
