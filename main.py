@@ -11,7 +11,7 @@ async def index(request):
 
 
 async def login_page(request):
-    resp = open('C:/users/balakris/aiohttp-login-session/login.html', 'r').read()
+    resp = open('login.html').read()
     return web.Response(text=resp, content_type='text/html')
 
 
