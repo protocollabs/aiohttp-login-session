@@ -1,4 +1,0 @@
-Requirements for aiohttp-login-system
-1. Python 3
-2. aiohttp
-3. cryptography
