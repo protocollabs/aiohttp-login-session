@@ -1,40 +1,21 @@
 from aiohttp import web
-import time
 
-COOKIE_NAME = "default"
+
+COOKIE_NAME = "kerla"
+
 
 async def index(request):
     cookie = request.cookies.get(COOKIE_NAME, None)
-    if cookie and cookie_valid(cookie):
+    if cookie:
         page = open('site.html').read()
         return web.Response(text=page, content_type='text/html')
     else:
         return web.HTTPFound(location='/loginpage')
 
-def cookie_valid(cookie):
-    if time.time() - cookie < 60 * 60 * 24:
-        # cookie older then 1 day
-        return False
-    else:
-        return True
 
 async def login_page(request):
     resp = open('login.html').read()
     return web.Response(text=resp, content_type='text/html')
-
-def cookie_create():
-    """
-    retuns a base64 encoded value of the cookie creation
-    time and  it with key key
-    """
-    t = str(time.time())
-
-def cookie_demarshall(cookie):
-    """
-    return time as float, cookie is converted from
-    base74 to binary,  and converted to float
-    """
-    return
 
 
 async def login(request):
@@ -44,14 +25,15 @@ async def login(request):
         password = form.get('password')
         if password == 'admin':
             response = web.HTTPFound(location='/')
-            response.set_cookie('default', value=cookie_create(), max_age=1, path='/')
+            # set a cookie valid for 30 days long.
+            response.set_cookie(COOKIE_NAME, value=0, path='/', max_age=24*60*60*30)
             return response
-    else:
-        resp = web.HTTPFound(location='/loginpage')
-        return resp
+    # Redirect to login page
+    return web.HTTPFound(location='/')
+
 
 app = web.Application()
 app.router.add_get('/', index)
 app.router.add_get('/loginpage', login_page)
-app.router.add_post('/login', login)
+app.router.add_post('/login', index)
 web.run_app(app, host='127.0.0.1', port=8080)
