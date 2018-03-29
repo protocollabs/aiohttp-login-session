@@ -1,77 +1,112 @@
-''' Simple aiohttp login system with default user!:
-This system is built with aiohttp module.
-Required Python-3 or 3+
-'''
+#!/usr/bin/env python
+# 
+# Simple aiohttp login system with default user!.
+# This system is built with aiohttp module.
+# Requires Python3 or higher.  
 
+
+import os
+import os.path
 from aiohttp import web
 
-# Customize the cookie name, value and cookie expire date
+
+# Customize the cookie name, value and cookie expire date. 
+# The cookie will be stored 30 days long.
 COOKIE_NAME = "OldTamil"
 COOKIE_VALUE = 0
-COOKIE_LIFE_TIME = 24*60*60*30
+COOKIE_LIFE_TIME = 24 * 60 * 60 * 30   
 
-# User credentials and here we could use more users in future.
-User ='Hippod'
-Password = 'admin'
 
-# Define the required host and port
+# User credentials.
+USERNAME = 'Hippod'
+PASSWORD = 'admin'
+
+# Define the required host and port.
 HOST = '127.0.0.1'
-PORT = 8080
+PORT = 8888
 
-''' cookie_check function will check for valid cookie on all pages!
-Return True if there is cookie with requested name.
-'''
-def cookie_check(request):
+
+def check_cookie(request):
+    """cookie_check!
+    This function will check for valid cookie on all pages!
+    Return True if there is valid cookie.
+
+    """
     cookie = request.cookies.get(COOKIE_NAME, None)
-    if cookie:
-        if COOKIE_NAME == COOKIE_NAME:
-            return True
-        # Normal test for checking the COOKIE_NAME
-        else:
-            print("COOKIE_NAME has been modified!.")
-    # Return False when there is no cookie at all.
-    else:
+    if not cookie:
         return False
+    if COOKIE_VALUE == 0:
+        return True
+
+
+def check_credentials(username, password):
+    if username == USERNAME and password == PASSWORD:
+        return True
+    return False
+
+
+def check_file(filename):
+    if not os.path.isfile(filename):
+        print("Internal server error! file not found: {}".format(filename))
+        return False
+    return open(filename).read()
+
 
 # The main page of the website
 async def index(request):
-    Check = cookie_check(request)
-    if Check is True:
-        page = open('site.html').read()
-        return web.Response(text=page, content_type='text/html')
-    else:
-        return web.HTTPFound(location='/loginpage')
+    valid_cookie = check_cookie(request)
+    if valid_cookie is True:
+        page = check_file('site.html')
+        if page:
+            return web.Response(text=page, content_type='text/html')
+        else:
+            response = check_file('error.html')
+            return web.Response(text=response, content_type='text/html')
+    return web.HTTPFound(location='/log')
 
-# When the user is unknown or the user's cookie is expired, will redirect to login page
+
+async def redirect_page(request):
+    valid_cookie = check_cookie(request)
+    if not valid_cookie:
+        page = check_file('redirect.html')
+        return web.Response(text=page, content_type='text/html')
+     
+    return web.HTTPFound('/')
+
+
 async def login_page(request):
-    Check = cookie_check(request)
-    # check for cookies in the login_page and return to main page if there is valid cookie.
-    if Check is True:
-        return web.HTTPFound('/')
-    else:
-        resp = open('login.html').read()
-        return web.Response(text=resp, content_type='text/html')
+    """ When the user is unknown or the user's cookie is expired, will redirect to login page
+    check for cookies in the login_page and return to main page if there is valid cookie.
+    """
+    valid_cookie = check_cookie(request)
+    if not valid_cookie:
+        page = check_file('login.html')
+        if page:
+            return web.Response(text=page, content_type='text/html')
+        else:
+            response = check_file('error.html')
+            return web.Response(text=response, content_type='text/html')
+
+    return web.HTTPFound('/')
+        
 
 # Login required if the user is new or user's cookie expired and check the user credentials.
 async def login(request):
         form = await request.post()
         username = form.get('username')
-        if username == User:
-            password = form.get('password')
-            if password == Password:
-                # Give access to the index page when user enters valid credentials
-                response = web.HTTPFound(location='/')
-                # If the user is successfully logged in, set the cookie on the index page.
-                response.set_cookie(COOKIE_NAME, value=COOKIE_VALUE, max_age=COOKIE_LIFE_TIME)
-                return response
-        else:
-            # Here we need to implement the redirect page when the user enter invalid credentials
-            # But now by default it redirects to the index page
-            return web.HTTPFound(location='/')
+        password = form.get('password')
+        if not check_credentials(username, password):
+            return web.HTTPFound('/redirect')
+        # The user is successfully logged in, set the cookie on the index page.
+        response = web.HTTPFound(location='/')
+        response.set_cookie(COOKIE_NAME, value=COOKIE_VALUE, max_age=COOKIE_LIFE_TIME)
+        return response
+    
 
-
+# Routes
 app = web.Application()
 app.router.add_get('/', index)
-app.router.add_get('/loginpage', login_page)
+app.router.add_get('/log', login_page)
 app.router.add_post('/login', login)
-web.run_app(app, host= HOST, port=PORT)
+app.router.add_get('/redirect', redirect_page)
+web.run_app(app, host=HOST, port=PORT)
