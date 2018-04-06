@@ -8,34 +8,40 @@
 import os
 from aiohttp import web
 import json
+import datetime
 
 # Customize the cookie name, value and cookie expire date.
-# The cookie will be stored 30 days long.
+# The cookie will be stored on the client site for 30 days long.
 COOKIE_NAME = "OldTamil"
+COOKIE_EXPIRE = datetime.datetime.now() + datetime.timedelta(days=30)
 COOKIE_VALUE = 0
-COOKIE_LIFE_TIME = 24 * 60 * 60 * 30
+
 
 # Define the required host and port.
 HOST = '127.0.0.1'
-PORT = 8888
+PORT = 8080
 
-# Files
+# All html and other files required from outside.
+# All these files required by the server, modifying contents inside the file
+# may cause server error.
 LOGIN_HTML = 'login.html'
 SITE_HTML = 'site.html'
 REDIRECT_HTML = 'redirect.html'
 CONFIG_FILE = 'configuration.json'
 
 
-# Simple error html page for server error.
+# Simple error web view for server error.
 # Server error can be caused by missing required files.
-ERROR ='''<!DOCTYPE html>
+ERROR = '''<!DOCTYPE html>
 <html>
   <head>
     <title>SERVER ERROR</title>
     <style type ="text/css">
-    body { text-align:center; padding: 10%; font-weight: bold; font: 20px Helvetica, sans-serif; }
+    body { text-align:center; padding: 10%;
+    font-weight: bold; font: 20px Helvetica, sans-serif; }
     a {padding: 30px;}
-    h1 {color:#D0AA0E ; font-family: Arial, Helvetica, sans-serif; font-size: 30px;}
+    h1 {color:#D0AA0E ; font-family: Arial, Helvetica, sans-serif;
+        font-size: 30px;}
     </style>
   </head>
      <body>
@@ -45,8 +51,9 @@ ERROR ='''<!DOCTYPE html>
 </html>'''
 
 
-# A separate server error get request to display error.
-def check(filename):
+# Check the requested file by user, and return server error if the file is
+# missing.
+def check_the_file(filename):
     if not os.path.isfile(filename):
         print("Internal server error! file not found: {}".format(filename))
         return False
@@ -54,31 +61,31 @@ def check(filename):
     return response
 
 
-def json_file_read(filename):
-    check_file = check(filename)
+# Checking the configuration file and valid the data.
+# The checking may fail by missing json file, missing valid data in the file.
+# Cause server error when configuration file has been modified.
+def json_reader(filename):
+    check_file = check_the_file(filename)
     if not check_file:
         return False
     configure_file = open(filename)
     load_data = json.load(configure_file)
     try:
-        if not load_data['USERNAME'] and load_data['PASSWORD']:
+        if not(load_data['USERNAME'] and load_data['PASSWORD']):
             return False
         return load_data
     except KeyError:
-        print("Dictionay don't have correct keys and value")
-        return False
+        print("{} doesn't have valid keys and value".format(filename))
+        pass
 
 
-# Check for the requested file in the system, return server error! if file not found.
-# User credentials stored in a json file. Loads the json file to access the values.
-# Check if json file can be accessible.
+# Identifying the user by validate the cookie. User must login if there is no
+# valid cookie
+# Cookie safety has been implemented. If user tries to
+# modify the cookie value it returns False.
+# Make sure user cannot modify cookie expire date.
 def check_cookie(request):
-    """cookie_check!
-    This function will check for valid cookie on all pages!
-    Return True if there is valid cookie.
-    """
     cookie = request.cookies.get(COOKIE_NAME, None)
-    # If there is a cookie, return True.
     if not cookie:
         return False
     try:
@@ -94,15 +101,17 @@ def check_cookie(request):
         return False
     return False
 
-# Get the user credentials from json data and validate the user inputs.
+
+# Validate user credentials
 def check_credentials(username, password):
-    credentials = json_file_read(CONFIG_FILE)
+    credentials = json_reader(CONFIG_FILE)
     if not credentials:
         return False
-    if username == credentials['USERNAME'] and password == credentials['PASSWORD']:
-        return True
-    return False
-
+    USERNAME = credentials['USERNAME']
+    PASSWORD = credentials['PASSWORD']
+    if not(username == USERNAME and password == PASSWORD):
+        return False
+    return True
 
 
 async def server_error(request):
@@ -114,56 +123,54 @@ async def server_error(request):
 
 # The main page of the website
 async def home(request):
-    check_the_file = check(SITE_HTML)
+    site_file = check_the_file(SITE_HTML)
     if not check_the_file:
-        # By default, return to server error if the file is not found.
         return web.HTTPFound('/error')
     valid_cookie = check_cookie(request)
     if not valid_cookie:
         return web.HTTPFound('/log')
-    return web.Response(text=check_the_file, content_type='text/html')
+    return web.Response(text=site_file, content_type='text/html')
 
 
-# Redirect to home page if user enters invalid credentials !
+# Redirect to home page if user enters invalid credentials!.
 async def redirect(request):
-    redirect_page = check(REDIRECT_HTML)
-    if not redirect_page:
+    redirect_file = check_the_file(REDIRECT_HTML)
+    if not redirect_file:
         return web.HTTPFound('/error')
     valid_cookie = check_cookie(request)
     if not valid_cookie:
-        return web.Response(text=redirect_page, content_type='text/html')
+        return web.Response(text=redirect_file, content_type='text/html')
     return web.HTTPFound('/')
 
 
 async def login_page(request):
-    """ When the user is unknown or the user's cookie is expired, will redirect to login page
-    check for cookies in the login_page and return to main page if there is valid cookie.
+    """ When the user is unknown or the user's cookie is expired,
+    will redirect to login page.Check for cookies in the login_page.
+    Return to main page if there is valid cookie.
     """
-    login_file = check(LOGIN_HTML)
+    login_file = check_the_file(LOGIN_HTML)
     if not login_file:
         return web.HTTPFound('/error')
     valid_cookie = check_cookie(request)
     if not valid_cookie:
         return web.Response(text=login_file, content_type='text/html')
-    response = web.HTTPFound('/log')
-    if not check_cookie(request):
-        return response.del_cookie(COOKIE_NAME)
     return web.HTTPFound('/')
 
 
-# Login required if the user is new or user's cookie expired.
+# Check the user credentials and set cookie on home page.
 async def login(request):
     form = await request.post()
     username = form.get('username')
     password = form.get('password')
-    if not json_file_read(CONFIG_FILE):
+    if not json_reader(CONFIG_FILE):
         return web.HTTPFound('/error')
     if not check_credentials(username, password):
         return web.HTTPFound('/redirect')
     # The user is successfully logged in, set the cookie on the index page.
-    response = web.Httpfound('/')
-    response.set_cookie(COOKIE_NAME, value=COOKIE_VALUE, max_age=COOKIE_LIFE_TIME)
+    response = web.HTTPFound('/')
+    response.set_cookie(COOKIE_NAME, value=COOKIE_VALUE, expires=COOKIE_EXPIRE)
     return response
+
 
 # Routes
 app = web.Application()
@@ -173,4 +180,3 @@ app.router.add_post('/login', login)
 app.router.add_get('/redirect', redirect)
 app.router.add_get('/error', server_error)
 web.run_app(app, host=HOST, port=PORT)
-
