@@ -10,16 +10,17 @@ from aiohttp import web
 import json
 import datetime
 
+
 # Customize the cookie name, value and cookie expire date.
 # The cookie will be stored on the client site for 30 days long.
 COOKIE_NAME = "OldTamil"
-COOKIE_EXPIRE = datetime.datetime.now() + datetime.timedelta(days=30)
 COOKIE_VALUE = 0
 
 
 # Define the required host and port.
 HOST = '127.0.0.1'
 PORT = 8080
+
 
 # All html and other files required from outside.
 # All these files required by the server, modifying contents inside the file
@@ -40,13 +41,14 @@ ERROR = '''<!DOCTYPE html>
     body { text-align:center; padding: 10%;
     font-weight: bold; font: 20px Helvetica, sans-serif; }
     a {padding: 30px;}
-    h1 {color:#D0AA0E ; font-family: Arial, Helvetica, sans-serif;
+    h1 {color:#FF0000 ; font-family: Arial, Helvetica, sans-serif;
         font-size: 30px;}
     </style>
   </head>
      <body>
-       <h1> Unexpected server error </h1>
+     <h1> ERROR: Unexpected server error </h1>
        <p> Please try again later</p>
+       <p>The Team</p>
      </body>
 </html>'''
 
@@ -85,19 +87,14 @@ def json_reader(filename):
 # modify the cookie value it returns False.
 # Make sure user cannot modify cookie expire date.
 def check_cookie(request):
-    cookie = request.cookies.get(COOKIE_NAME, None)
-    if not cookie:
+    cookie_value = request.cookies.get(COOKIE_NAME, None)
+    if not cookie_value:
         return False
     try:
-        if not int(cookie) == COOKIE_VALUE:
+        if not int(cookie_value) == COOKIE_VALUE:
             return False
         return True
     except ValueError:
-        alert_message = """Warning:Cookie has been modified by the user!.
-        Details:
-            Cookie Name: {} and Cookie value: {}
-            \nModified Cookie Value: {}"""
-        print(alert_message.format(COOKIE_NAME, COOKIE_VALUE, cookie))
         return False
     return False
 
@@ -117,7 +114,10 @@ def check_credentials(username, password):
 async def server_error(request):
     valid_cookie = check_cookie(request)
     if not valid_cookie:
-        return web.Response(text=ERROR, content_type='text/html')
+        check_login_file = check_the_file(LOGIN_HTML)
+        if not check_login_file:
+            return web.Response(text=ERROR, content_type='text/html')
+        return web.HTTPFound('/log')
     return web.HTTPFound('/')
 
 
@@ -168,6 +168,8 @@ async def login(request):
         return web.HTTPFound('/redirect')
     # The user is successfully logged in, set the cookie on the index page.
     response = web.HTTPFound('/')
+    expires = datetime.datetime.utcnow() + datetime.timedelta(days=30)
+    COOKIE_EXPIRE = expires.strftime("%a, %d %b %Y %H:%M:%S GMT")
     response.set_cookie(COOKIE_NAME, value=COOKIE_VALUE, expires=COOKIE_EXPIRE)
     return response
 
