@@ -104,14 +104,14 @@ class Login:
         return False
 
     # check username and password
-    def _check_credentials(self):
+    def _check_credentials(self, username, password):
         credentials = self._load_credentials(CONFIG_FILE)
         if not credentials:
             return False
         authorized_username = credentials['USERNAME']
         authorized_password = credentials['PASSWORD']
-        if not (self.username == authorized_username and
-                self.password == authorized_password):
+        if not (username == authorized_username and
+                password == authorized_password):
             return False
         return True
 
@@ -152,9 +152,9 @@ class Login:
         if not self._load_credentials(CONFIG_FILE):
             return web.HTTPFound('/error')
         form = await request.post()
-        self.username = form.get('username')
-        self.password = form.get('password')
-        if not self._check_credentials():
+        username = form.get('username')
+        password = form.get('password')
+        if not self._check_credentials(username, password):
             return web.HTTPFound('/redirect')
         # Set the time for 30 days long
         time_ = datetime.datetime.utcnow() + datetime.timedelta(days=30)
