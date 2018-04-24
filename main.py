@@ -121,7 +121,7 @@ class Login:
         """
         return web.Response(text=ERROR, content_type='text/html')
 
-    async def home(self, request):
+    async def home_page(self, request):
         site_file = self._load_html_file(SITE_HTML)
         if not site_file:
             return web.HTTPFound('/error')
@@ -130,7 +130,7 @@ class Login:
             return web.HTTPFound('/log')
         return web.Response(text=site_file, content_type='text/html')
 
-    async def redirect(self, request):
+    async def redirect_page(self, request):
         redirect_file = self._load_html_file(REDIRECT_HTML)
         if not redirect_file:
             return web.HTTPFound('/error')
@@ -148,7 +148,7 @@ class Login:
             return web.Response(text=login_file, content_type='text/html')
         return web.HTTPFound('/')
 
-    async def login(self, request):
+    async def login_required(self, request):
         if not self._load_credentials(CONFIG_FILE):
             return web.HTTPFound('/error')
         form = await request.post()
@@ -168,11 +168,12 @@ class Login:
 # Add routes
 def aiohttp_login():
     app = web.Application()
-    app.router.add_routes([web.get('/log', Login().login_page),
-                           web.post('/login', Login().login),
-                           web.get('/', Login().home),
-                           web.get('/error', Login().server_error),
-                           web.get('/redirect', Login().redirect)])
+    login = Login()
+    app.router.add_routes([web.get('/log', login.login_page),
+                           web.post('/login', login.login_required),
+                           web.get('/', login.home_page),
+                           web.get('/error', login.server_error),
+                           web.get('/redirect', login.redirect_page)])
     return web.run_app(app, host=HOST, port=PORT)
 
 
