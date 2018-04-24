@@ -56,7 +56,7 @@ class Login:
     # check file existence
     def _check_the_file(self, filename):
         if not os.path.isfile(filename):
-            print("Internal server error! " \
+            print("Internal server error! "
                   "file not found:{}".format(filename))
             return False
         return True
