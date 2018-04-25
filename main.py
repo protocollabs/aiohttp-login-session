@@ -53,36 +53,44 @@ ERROR = '''<!DOCTYPE html>
 # We use cookie on client site after user successfully logged in
 class Login:
 
-    # Check html and json files
+    # check file existence
     def _check_the_file(self, filename):
-        self.__filename = filename
-        _file = os.path.isfile(self.__filename)
-        if not _file:
-            print("Internal server error! " \
-                  "file not found:{}".format(self.__filename))
+        if not os.path.isfile(filename):
+            print("Internal server error! "
+                  "file not found:{}".format(filename))
             return False
+        return True
 
-        # Read html files
-        if self.__filename.endswith(".html"):
-            response = open(self.__filename).read()
-            return response
-
-        # Read json file
-        elif self.__filename.endswith(".json"):
-            configure_file = open(self.__filename)
-            load_data = json.load(configure_file)
-            if all(key in load_data for key in("USERNAME", "PASSWORD")):
-                return load_data
+    # read html files
+    # return False if requested file format is not .html
+    def _load_html_file(self, filename):
+        if not self._check_the_file(filename):
             return False
-
-        # Unsupported file format
-        else:
-            message = ("{} is not in a required format".format(self.__filename))
-            print(message)
+        if not filename.endswith(".html"):
+            print("{} is not html file".format(filename))
             return False
+        response = open(filename).read()
+        return response
 
+    # load json file and return to dictionary
+    # return False if requested file format is not .json
+    # or keys in dictionary is missing
+    def _load_credentials(self, filename):
+        if not self._check_the_file(filename):
+            return False
+        if not filename.endswith(".json"):
+            print("{} is not a json file.".format(filename))
+            return False
+        configure_file = open(filename)
+        load_json_data = json.load(configure_file)
+        # check dictionary has following keys
+        if not all(key in load_json_data for key in("USERNAME", "PASSWORD")):
+            return False
+        return load_json_data
+
+    # check for the cookie on the requested page
+    # return False if there is no authorized cookie
     def _check_cookie(self, request):
-        # Get cookie value
         cookie_value = request.cookies.get(COOKIE_NAME, None)
         if not cookie_value:
             return False
@@ -95,13 +103,15 @@ class Login:
             return False
         return False
 
-    def _check_credentials(self):
-        credentials = self._check_the_file(CONFIG_FILE)
+    # check username and password
+    def _check_credentials(self, username, password):
+        credentials = self._load_credentials(CONFIG_FILE)
         if not credentials:
             return False
-        username = credentials['USERNAME']
-        password = credentials['PASSWORD']
-        if not (self.username == username and self.password == password):
+        authorized_username = credentials['USERNAME']
+        authorized_password = credentials['PASSWORD']
+        if not (username == authorized_username and
+                password == authorized_password):
             return False
         return True
 
@@ -111,8 +121,8 @@ class Login:
         """
         return web.Response(text=ERROR, content_type='text/html')
 
-    async def home(self, request):
-        site_file = self._check_the_file(SITE_HTML)
+    async def home_page(self, request):
+        site_file = self._load_html_file(SITE_HTML)
         if not site_file:
             return web.HTTPFound('/error')
         valid_cookie = self._check_cookie(request)
@@ -120,8 +130,8 @@ class Login:
             return web.HTTPFound('/log')
         return web.Response(text=site_file, content_type='text/html')
 
-    async def redirect(self, request):
-        redirect_file = self._check_the_file(REDIRECT_HTML)
+    async def redirect_page(self, request):
+        redirect_file = self._load_html_file(REDIRECT_HTML)
         if not redirect_file:
             return web.HTTPFound('/error')
         valid_cookie = self._check_cookie(request)
@@ -130,7 +140,7 @@ class Login:
         return web.HTTPFound('/')
 
     async def login_page(self, request):
-        login_file = self._check_the_file(LOGIN_HTML)
+        login_file = self._load_html_file(LOGIN_HTML)
         if not login_file:
             return web.HTTPFound('/error')
         valid_cookie = self._check_cookie(request)
@@ -138,13 +148,13 @@ class Login:
             return web.Response(text=login_file, content_type='text/html')
         return web.HTTPFound('/')
 
-    async def login(self, request):
-        if not self._check_the_file(CONFIG_FILE):
+    async def login_required(self, request):
+        if not self._load_credentials(CONFIG_FILE):
             return web.HTTPFound('/error')
         form = await request.post()
-        self.username = form.get('username')
-        self.password = form.get('password')
-        if not self._check_credentials():
+        username = form.get('username')
+        password = form.get('password')
+        if not self._check_credentials(username, password):
             return web.HTTPFound('/redirect')
         # Set the time for 30 days long
         time_ = datetime.datetime.utcnow() + datetime.timedelta(days=30)
@@ -158,11 +168,12 @@ class Login:
 # Add routes
 def aiohttp_login():
     app = web.Application()
-    app.router.add_routes([web.get('/log', Login().login_page),
-                           web.post('/login', Login().login),
-                           web.get('/', Login().home),
-                           web.get('/error', Login().server_error),
-                           web.get('/redirect', Login().redirect)])
+    login = Login()
+    app.router.add_routes([web.get('/log', login.login_page),
+                           web.post('/login', login.login_required),
+                           web.get('/', login.home_page),
+                           web.get('/error', login.server_error),
+                           web.get('/redirect', login.redirect_page)])
     return web.run_app(app, host=HOST, port=PORT)
 
 
