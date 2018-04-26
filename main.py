@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 #
 # Simple aiohttp login system with default user!.
-# This system has been built by using aiohttp module.
-# Require Python3 or higher.
 
 
 import os
@@ -11,8 +9,7 @@ import json
 import datetime
 
 
-# Customize the cookie name, value and cookie expire date.
-# The cookie will be stored on the client site for 30 days long.
+# Customize the cookie.
 COOKIE_NAME = "OldTamil"
 COOKIE_VALUE = 0
 
@@ -21,7 +18,7 @@ COOKIE_VALUE = 0
 HOST = '127.0.0.1'
 PORT = 8080
 
-# Html and json files defined!
+# Define files
 LOGIN_HTML = 'login.html'
 SITE_HTML = 'site.html'
 REDIRECT_HTML = 'redirect.html'
@@ -49,11 +46,8 @@ ERROR = '''<!DOCTYPE html>
 </html>'''
 
 
-# Login handles checking, reading files and user credentials
-# We use cookie on client site after user successfully logged in
 class Login:
 
-    # check file existence
     def _check_the_file(self, filename):
         if not os.path.isfile(filename):
             print("Internal server error! "
@@ -61,20 +55,15 @@ class Login:
             return False
         return True
 
-    # read html files
-    # return False if requested file format is not .html
     def _load_html_file(self, filename):
         if not self._check_the_file(filename):
             return False
         if not filename.endswith(".html"):
             print("{} is not html file".format(filename))
             return False
-        response = open(filename).read()
-        return response
+        return open(filename).read()
 
-    # load json file and return to dictionary
-    # return False if requested file format is not .json
-    # or keys in dictionary is missing
+    # Load user credentials
     def _load_credentials(self, filename):
         if not self._check_the_file(filename):
             return False
@@ -83,19 +72,16 @@ class Login:
             return False
         configure_file = open(filename)
         load_json_data = json.load(configure_file)
-        # check dictionary has following keys
         if not all(key in load_json_data for key in("USERNAME", "PASSWORD")):
             return False
         return load_json_data
 
-    # check for the cookie on the requested page
-    # return False if there is no authorized cookie
+    # search for cookie and get cookie value
     def _check_cookie(self, request):
         cookie_value = request.cookies.get(COOKIE_NAME, None)
         if not cookie_value:
             return False
         try:
-            # check the requested cookie value
             if not int(cookie_value) == COOKIE_VALUE:
                 return False
             return True
@@ -116,8 +102,8 @@ class Login:
         return True
 
     async def server_error(self, request):
-        """ Error when a requested file
-        or content of the file is missing.
+        """ Read ERROR html text.
+        Return html web response
         """
         return web.Response(text=ERROR, content_type='text/html')
 
@@ -148,6 +134,7 @@ class Login:
             return web.Response(text=login_file, content_type='text/html')
         return web.HTTPFound('/')
 
+    # login required & set cookie
     async def login_required(self, request):
         if not self._load_credentials(CONFIG_FILE):
             return web.HTTPFound('/error')
@@ -156,7 +143,6 @@ class Login:
         password = form.get('password')
         if not self._check_credentials(username, password):
             return web.HTTPFound('/redirect')
-        # Set the time for 30 days long
         time_ = datetime.datetime.utcnow() + datetime.timedelta(days=30)
         cookie_expiry_date = time_.strftime("%a, %d %b %Y %H:%M:%S GMT")
         response = web.HTTPFound('/')
