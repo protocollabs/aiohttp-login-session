@@ -50,11 +50,14 @@ app = web.Application(middlewares=[error_middleware])
 ```
 
 ### Useful documents:
-Aiohttp is a asyncio framework. You can find more information about aiohttp here http://aiohttp.readthedocs.io/en/stable/
+Aiohttp is an asyncio framework. You can find more information about aiohttp here http://aiohttp.readthedocs.io/en/stable/
+
 For Asyncio, please refer python 3.5 document https://docs.python.org/3/library/asyncio.html
 
 ### Further Info:
 aiohttp login model designed with default credentials.
+
+This module has no public **API**. 
 
 Verify the deployment by navigating to your server address in your preferred browser.
 
