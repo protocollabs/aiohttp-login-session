@@ -2,16 +2,17 @@
 import os
 import datetime
 import json
+import logging
 from aiohttp import web
 
+
+logging.basicConfig(level=logging.DEBUG)
 
 COOKIE_NAME = "OldTamil"
 COOKIE_VALUE = 0
 HOST = "localhost"
 PORT = 8080
-
 TEMPLATES = "app/templates/"
-
 CONFIG_FILE = 'configuration.json'
 
 
@@ -142,7 +143,7 @@ def aiohttp_login():
                            web.get('/', login.home_page),
                            web.get('/error', login.server_error),
                            web.get('/redirect', login.redirect_page)])
-    return web.run_app(app, host=HOST, port=PORT)
+    return web.run_app(app, host=HOST, port=PORT, access_log_format="%t:: %r %s")
 
 
 if __name__ == '__main__':
