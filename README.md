@@ -3,7 +3,6 @@
 
 
 ## Introduction:
-![all text](https://github.com/muthuubalakan/aiohttp-login-session/blob/master/login.png)
 
 A aiohttp server with login mechanism. This is a login system purely implemented on asyncio and aiohttp.
 It has user interface html pages and data contains configuration file by default. 
@@ -12,9 +11,15 @@ It has user interface html pages and data contains configuration file by default
 aiohttp-login-session requires [Python3](https://www.python.org/download/releases/3.0/) or higher version to run.
 You are recommended to install [aiohttp](https://aiohttp.readthedocs.io/en/stable/)
 
-Pip install:
+Install:
 ```sh
-$ pip install aiohttp
+$ pip install -r requirements.txt
+```
+## Run
+
+
+```sh
+$ . runServer.sh
 ```
 
 ### Info:
@@ -56,11 +61,3 @@ For Asyncio, please refer python 3.5 document https://docs.python.org/3/library/
 
 ### Further Info:
 aiohttp login model designed with default credentials.
-
-This module has no public **API**. 
-
-Verify the deployment by navigating to your server address in your preferred browser.
-
-```sh
-127.0.0.1:8080
-```
